@@ -1,16 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import type { User } from "@supabase/supabase-js";
 import StudyDashboard from "@/components/StudyDashboard";
 
-export default function Home() {
+function HomeContent() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const authError = searchParams.get("auth_error");
+    const urlError = searchParams.get("error_description");
+    if (authError) setError(authError);
+    else if (urlError) setError(urlError.replace(/\+/g, " "));
+  }, [searchParams]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -25,10 +35,15 @@ export default function Home() {
 
   async function sendMagicLink(e: React.FormEvent) {
     e.preventDefault();
-    await supabase.auth.signInWithOtp({
+    setError(null);
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/` },
+      options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback` },
     });
+    if (error) {
+      setError(error.message);
+      return;
+    }
     setSent(true);
   }
 
@@ -58,6 +73,11 @@ export default function Home() {
               <button type="submit" className="btn btn-primary btn-block">
                 Send magic link
               </button>
+              {error && (
+                <p className="text-sm" style={{ color: "var(--danger)" }}>
+                  {error}
+                </p>
+              )}
             </form>
           )}
         </div>
@@ -73,5 +93,13 @@ export default function Home() {
       </div>
       <StudyDashboard userId={user.id} />
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
