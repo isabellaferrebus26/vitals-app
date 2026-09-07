@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createServiceClient } from "@/lib/supabase-server";
+import { createServiceClient, getServerUser } from "@/lib/supabase-server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 // POST /api/stripe/checkout
-// body: { plan: "plus" | "cohort", userId: string, email: string }
+// body: { plan: "plus" | "cohort" }
 //
 // Creates a Stripe Checkout session and returns the URL to redirect the user to.
 // The actual card entry happens on Stripe's hosted page — this app never touches card numbers.
+// userId/email come from the caller's own session, never the request body —
+// otherwise anyone could attribute a paid subscription to someone else's account.
 export async function POST(req: NextRequest) {
-  const { plan, userId, email } = await req.json();
+  const user = await getServerUser();
+  if (!user) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+  const userId = user.id;
+  const email = user.email;
+
+  const { plan } = await req.json();
 
   const priceId =
     plan === "plus"

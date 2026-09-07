@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerUser } from "@/lib/supabase-server";
 import type { ExplainStyle } from "@/lib/types";
 
 // POST /api/explain
@@ -19,6 +20,11 @@ const STYLE_INSTRUCTIONS: Record<ExplainStyle, string> = {
 };
 
 export async function POST(req: NextRequest) {
+  const user = await getServerUser();
+  if (!user) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+
   const { prompt, options, answer, style } = await req.json();
 
   const instruction = STYLE_INSTRUCTIONS[style as ExplainStyle];

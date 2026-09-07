@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase-server";
+import { createServiceClient, getServerUser } from "@/lib/supabase-server";
 
 // POST /api/generate-questions
 // body: { section: "Reading" | "Math" | "Science" | "English", count?: number }
@@ -7,6 +7,11 @@ import { createServiceClient } from "@/lib/supabase-server";
 // Server-side only: this is where the real ANTHROPIC_API_KEY lives.
 // The client never talks to the Anthropic API directly.
 export async function POST(req: NextRequest) {
+  const user = await getServerUser();
+  if (!user) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 });
+  }
+
   const { section, count = 5 } = await req.json();
 
   if (!["Reading", "Math", "Science", "English"].includes(section)) {
