@@ -10,9 +10,11 @@ function HomeContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
   const [checking, setChecking] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,18 +35,31 @@ function HomeContent() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  async function sendMagicLink(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback` },
-    });
-    if (error) {
-      setError(error.message);
-      return;
+    setSubmitting(true);
+    try {
+      if (mode === "signup") {
+        const { error, data } = await supabase.auth.signUp({ email, password });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        if (!data.session) {
+          // Only reachable if email confirmation ever gets re-enabled on the project.
+          setError("Account created — check your email to confirm before signing in.");
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+      }
+    } finally {
+      setSubmitting(false);
     }
-    setSent(true);
   }
 
   if (checking) return null;
@@ -58,28 +73,53 @@ function HomeContent() {
             Vitals
           </div>
           <p className="text-muted">Check your vitals. Own your exam.</p>
-          {sent ? (
-            <p>Check your email for a sign-in link.</p>
-          ) : (
-            <form onSubmit={sendMagicLink} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
-              <input
-                className="input"
-                type="email"
-                required
-                placeholder="you@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <button type="submit" className="btn btn-primary btn-block">
-                Send magic link
-              </button>
-              {error && (
-                <p className="text-sm" style={{ color: "var(--danger)" }}>
-                  {error}
-                </p>
-              )}
-            </form>
-          )}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 16, marginBottom: 4 }}>
+            <button
+              type="button"
+              className={`pill ${mode === "signin" ? "active" : ""}`}
+              style={{ flex: 1 }}
+              onClick={() => setMode("signin")}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              className={`pill ${mode === "signup" ? "active" : ""}`}
+              style={{ flex: 1 }}
+              onClick={() => setMode("signup")}
+            >
+              Create account
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12 }}>
+            <input
+              className="input"
+              type="email"
+              required
+              placeholder="you@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              className="input"
+              type="password"
+              required
+              minLength={6}
+              placeholder="Password (min. 6 characters)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
+              {submitting ? "…" : mode === "signup" ? "Create account" : "Sign in"}
+            </button>
+            {error && (
+              <p className="text-sm" style={{ color: "var(--danger)" }}>
+                {error}
+              </p>
+            )}
+          </form>
         </div>
       </div>
     );
