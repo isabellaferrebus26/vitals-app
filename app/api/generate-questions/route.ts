@@ -31,7 +31,7 @@ Write ${count} new, non-repetitive, realistic TEAS-style questions of medium dif
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-5",
       max_tokens: 1500,
       system,
       messages: [{ role: "user", content: `Generate ${count} ${section} questions now.` }],

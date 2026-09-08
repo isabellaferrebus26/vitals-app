@@ -49,7 +49,7 @@ Keep it to 3-5 sentences. Return ONLY the explanation text, no preamble, no mark
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-5",
       max_tokens: 400,
       system,
       messages: [{ role: "user", content: userMessage }],
